@@ -1,0 +1,25 @@
+name: Backend IA pipeline
+
+on:
+    push:
+        branches: [main]
+
+    pull_request:
+        branches: [main]
+
+jobs:
+    CI:
+        runs-on: ubuntu-22.04
+
+        steps:
+
+            - name: Checkout do código
+              uses: actions/checkout@v4
+              with:
+                fetch-depth: 1
+
+            - name: escolhendo a versão do node
+              uses: actions/setup-node@v3.9.1
+              with:
+                node-version: "22"
+
