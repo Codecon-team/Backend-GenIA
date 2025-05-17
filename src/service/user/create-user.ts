@@ -1,4 +1,3 @@
-import { Request, Response } from "express";
 import argon2 from "argon2";
 import { RegisterUser } from "../../types/user-type";
 import prisma from "../../prisma/client";
@@ -23,6 +22,8 @@ export async function createUser(userData: RegisterUser) {
         throw new AppError('Email already in use', 400);
       }
     }
+    const hashPassword = await argon2.hash(userData.password);
+    userData.password = hashPassword
 
     const newUser = await prisma.user.create({
       data: userData,
