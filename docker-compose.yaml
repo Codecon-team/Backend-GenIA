@@ -13,6 +13,20 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
     restart: unless-stopped
+    
+  frontend:
+    container_name: frontend
+    image: blackvsk/genia:front
+    ports:
+      - 80:80
+
+  MS:
+    container_name: MS
+    image: blackvsk/genia:MS
+    env_file:
+      - .env
+    ports:
+      - 3001:3000
 
 volumes:
   pgdata:
