@@ -1,17 +1,17 @@
-import { Request } from "express"
-import { UserRole, Subscription, Resume, Payment } from '@prisma/client';
+import { Request } from "express";
+import { UserRole, Subscription, Resume, Payment } from "@prisma/client";
 
-export interface RegisterUser{
-    username: string
-    email: string
-    password: string
+export interface RegisterUser {
+  username: string;
+  email: string;
+  password: string;
 }
-export interface LoginUser{
-    email: string,
-    password: string
+export interface LoginUser {
+  email: string;
+  password: string;
 }
 export interface AuthenticatedRequest extends Request {
-  user?: { id: number }; 
+  user?: { id: number };
 }
 export interface User {
   id: number;
@@ -29,4 +29,12 @@ export interface User {
   subscriptions: Subscription[];
   resumes: Resume[];
   payments: Payment[];
+}
+export interface UpdateUser {
+  username?: string;
+  email?: string;
+  cpf?: string | null;
+  firstname?: string | null;
+  lastname?: string | null;
+  password?: string;
 }
