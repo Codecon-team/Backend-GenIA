@@ -23,3 +23,6 @@ jobs:
               with:
                 node-version: "22"
 
+            - name: instalação das dependencias
+              run: npm install
+
