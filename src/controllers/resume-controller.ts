@@ -5,6 +5,8 @@ import { extractTextFromResume } from "../service/resume/extract-text";
 import { analyzeResumeWithIA } from "../service/resume/analyze-resume";
 import { saveResumeAnalysis } from "../service/resume/save-resume";
 import { AuthenticatedRequest } from "../types/user-type";
+import { getAllAnalyzedResumes } from "../service/resume/get-all-resume";
+import { getOnlyResume } from "../service/resume/get-only-resume";
 
 export async function analyzeResumeController(
   req: AuthenticatedRequest,
@@ -51,5 +53,98 @@ export async function analyzeResumeController(
       file: req.file?.originalname
     });
     next(error);
+  }
+}
+
+export async function getResumeAnalysis(
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    if (!req.user?.id) {
+      throw new AppError("Usuário não autenticado", 401);
+    }
+
+    logger.info(`Buscando análises de currículo para usuário ${req.user.id}`);
+
+    const analyzedResumes = await getAllAnalyzedResumes(req.user.id);
+    
+    logger.debug(`Encontradas ${analyzedResumes.length} análises`, {
+      userId: req.user.id
+    });
+
+    const formattedResumes = analyzedResumes.map(resume => ({
+      id: resume.id,
+      fileName: resume.file_name,
+      createdAt: resume.created_at,
+      analyses: resume.analyses.map(analysis => ({
+        id: analysis.id,
+        score: analysis.score,
+        strengths: analysis.strengths,
+        weaknesses: analysis.weaknesses,
+        suggestions: analysis.suggestions,
+        funnyComment: analysis.funny_comment,
+        roastLevel: analysis.roast_level,
+        processedAt: analysis.processed_at
+      }))
+    }));
+
+    res.status(200).json({
+      success: true,
+      count: formattedResumes.length,
+      resumes: formattedResumes
+    });
+
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function getOnlyResumeController(
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    if (!req.user?.id) {
+      throw new AppError('Usuário não autenticado', 401);
+    }
+
+    const resumeId = Number(req.params.id);
+    if (isNaN(resumeId)) {
+      throw new AppError('ID do currículo inválido', 400);
+    }
+
+    logger.info(`Buscando currículo ${resumeId} para usuário ${req.user.id}`);
+
+    const resume = await getOnlyResume(req.user.id, resumeId);
+
+    if (!resume) {
+      throw new AppError('Currículo não encontrado ou não pertence ao usuário', 404);
+    }
+
+    const safeResume = {
+      id: resume.id,
+      file_name: resume.file_name,
+      created_at: resume.created_at,
+      analyses: resume.analyses.map((analysis) => ({
+        id: analysis.id,
+        score: analysis.score,
+        strengths: analysis.strengths,
+        weaknesses: analysis.weaknesses,
+        suggestions: analysis.suggestions,
+        funny_comment: analysis.funny_comment,
+        roast_level: analysis.roast_level,
+        processed_at: analysis.processed_at,
+      })),
+    };
+
+    res.status(200).json({
+      success: true,
+      resume: safeResume,
+    });
+  } catch (error) {
+     next(error);
   }
 }

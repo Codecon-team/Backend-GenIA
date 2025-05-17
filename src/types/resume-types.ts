@@ -1,3 +1,5 @@
+import { Resume, ResumeAnalysis } from "@prisma/client";
+
 export interface AnalysisResult {
     technical: {
       skills: string[];
@@ -12,3 +14,6 @@ export interface AnalysisResult {
     };
   }
   
+  export type ResumeWithAnalyses = Resume & {
+    analyses: ResumeAnalysis[];
+  };
