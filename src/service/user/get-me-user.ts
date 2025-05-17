@@ -2,7 +2,7 @@ import { AppError } from "../../errors/AppError";
 import prisma from "../../prisma/client";
 
 
-export async function getMeUser(userId: any ){
+export async function getMeUser(userId: any){
     try{
         const user = prisma.user.findUnique({
             where:{
