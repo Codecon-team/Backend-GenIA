@@ -5,8 +5,6 @@ import { logger } from '../config/logger/logger';
 import jwt from 'jsonwebtoken';
 import { AuthenticatedRequest } from '../types/user-type';
 
-
-
 export function checkToken(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   const authHeader = req.headers['authorization'];
   const token = authHeader?.split(' ')[1];
