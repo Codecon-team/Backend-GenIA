@@ -3,10 +3,9 @@ import { JwtPayload } from 'jsonwebtoken';
 import { AppError } from '../errors/AppError';
 import { logger } from '../config/logger/logger';
 import jwt from 'jsonwebtoken';
+import { AuthenticatedRequest } from '../types/user-type';
 
-export interface AuthenticatedRequest extends Request {
-  user?: { id: number }; 
-}
+
 
 export function checkToken(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   const authHeader = req.headers['authorization'];

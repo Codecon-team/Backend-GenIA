@@ -5,7 +5,7 @@ import { AppError } from "../../errors/AppError";
 
 export async function createUser(userData: RegisterUser) {
   try {
-    const existingUser = await prisma.user.findFirst({
+    const existingUser = await prisma.user.findUnique({
       where: {
         OR: [
           { username: userData.username },
