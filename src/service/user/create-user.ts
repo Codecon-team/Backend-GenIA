@@ -1,39 +1,53 @@
-import { Request, Response } from "express";
+import { logger } from "../../config/logger/logger";
+import { AppError } from "../../errors/AppError";
 import argon2 from "argon2";
 import { RegisterUser } from "../../types/user-type";
 import prisma from "../../prisma/client";
-import { AppError } from "../../errors/AppError";
 
-export async function createUser(userData: RegisterUser) {
-  try {
-    const existingUser = await prisma.user.findFirst({
-      where: {
-        OR: [
-          { username: userData.username },
-          { email: userData.email },
-        ],
-      },
-    });
+export async function createUser(userDTO: RegisterUser) {
+  const existUser = await prisma.user.findFirst({
+    where: {
+      OR: [{ username: userDTO.username }, { email: userDTO.email }],
+    },
+  });
+  const basicPlan = await prisma.plan.findUnique({
+    where: { slug: "basic" },
+  });
 
-    if (existingUser) {
-      if (existingUser.username === userData.username) {
-        throw new AppError('Username already exists', 400);
-      }
-      if (existingUser.email === userData.email) {
-        throw new AppError('Email already in use', 400);
-      }
-    }
-
-    const newUser = await prisma.user.create({
-      data: userData,
-    });
-
-    return newUser;
-  } catch (error: any) {
-    if (error.code === 'P2002') {
-      throw new AppError(`Unique constraint failed on: ${error.meta?.target}`, 400);
-    }
-    throw new AppError(error, 400);
+  if (!basicPlan) {
+    logger.error("Basic plan not found");
+    throw new AppError("Basic plan not found", 500);
   }
-}
 
+  if (existUser) {
+    logger.error("User already exists");
+    throw new AppError("User already exists", 400);
+  }
+
+  const hashedPassword = await argon2.hash(userDTO.password);
+
+  const userData: RegisterUser = {
+    username: userDTO.username,
+    email: userDTO.email,
+    password: hashedPassword,
+  };
+
+  const savedUser = await prisma.user.create({
+    data: {
+      ...userData,
+      subscriptions: {
+        create: {
+          plan_id: basicPlan.id,
+          status: "active",
+          start_date: new Date(),
+          stripe_subscription_id: "free-plan",
+        },
+      },
+    },
+    include: {
+      subscriptions: true,
+    },
+  });
+
+  return savedUser;
+}
