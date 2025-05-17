@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { registerUserController, loginUserController, getMeUserController } from "../controllers/user-controller";
+import { registerUserController, loginUserController, getMeUserController, updateUserController } from "../controllers/user-controller";
 import { checkToken } from "../utils/checkToken";
 
 const userRouter = Router()
@@ -7,6 +7,7 @@ const userRouter = Router()
 userRouter.post("/", registerUserController)
 userRouter.post("/login", loginUserController)
 userRouter.get("/me", checkToken, getMeUserController)
+userRouter.put("/", checkToken, updateUserController)
 
 
 export { userRouter }
