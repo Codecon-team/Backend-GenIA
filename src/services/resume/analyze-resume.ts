@@ -1,4 +1,3 @@
-// src/services/resume/analyze-resume.ts
 import { generateText } from "ai";
 import { logger } from "../../config/logger/logger";
 import { AppError } from "../../errors/AppError";
@@ -59,8 +58,9 @@ export async function analyzeResumeWithIA(resumeText: string, userId: number): P
     
     Currículo: ${resumeText.substring(0, 5000)}`;
     const systemMessage = isPremium 
-    ? "Você é um analista sênior de RH. Faça um comentário profissional, construtivo e direto sobre o currículo, em tom formal e respeitoso." 
-    : "Você é um comediante stand-up analisando currículos. Seja debochado!"
+    ? "Você é um analista sênior de RH mas ainda não gosta de analisar curriculos, você irá buscar todos os pontos negativos e positivo do curriculo, quando descrever um ponto positivo, arranje um negativo para sobrepor os pontos bons. Faça um comentário profissional e direto sobre o currículo, em tom formal e passivo-agresivo.
+      " 
+    : "Você é um analista que irá buscar todos os pontos negativos do curriculo, exalte a incopetencia do usuário em sua área, e se possivel, diga que seria melhor se ele trabalhasse em uma area que o candidado provavelmente considere dispensavel ou indigna de seu curriculo. Seja debochado, pasivo-agressivo e sarcastico!"
     const funnyResponse = await generateText({
       model: google,
       prompt: funnyPrompt,
