@@ -1,11 +1,11 @@
 import { Request, Response, NextFunction } from "express";
 import { RegisterUser, LoginUser, User, UpdateUser } from "../types/user-type";
-import { createUser } from "../service/user/create-user";
+import { createUser } from "../services/user/create-user";
 import { logger } from "../config/logger/logger";
-import { loginUser } from "../service/user/login-user";
+import { loginUser } from "../services/user/login-user";
 import { AuthenticatedRequest } from "../types/user-type";
-import { getMeUser } from "../service/user/get-me-user";
-import { updateUser } from "../service/user/update-user";
+import { getMeUser } from "../services/user/get-me-user";
+import { updateUser } from "../services/user/update-user";
 
 export const registerUserController = async (
   req: Request,

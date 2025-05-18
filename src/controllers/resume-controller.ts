@@ -1,12 +1,13 @@
 import { NextFunction, Request, Response } from "express";
 import { AppError } from "../errors/AppError";
 import { logger } from "../config/logger/logger";
-import { extractTextFromResume } from "../service/resume/extract-text";
-import { analyzeResumeWithIA } from "../service/resume/analyze-resume";
-import { saveResumeAnalysis } from "../service/resume/save-resume";
+import { extractTextFromResume } from "../services/resume/extract-text";
+import { analyzeResumeWithIA } from "../services/resume/analyze-resume";
+import { saveResumeAnalysis } from "../services/resume/save-resume";
 import { AuthenticatedRequest } from "../types/user-type";
-import { getAllAnalyzedResumes } from "../service/resume/get-all-resume";
-import { getOnlyResume } from "../service/resume/get-only-resume";
+import { getAllAnalyzedResumes } from "../services/resume/get-all-resume";
+import { getOnlyResume } from "../services/resume/get-only-resume";
+import { checkUserPlan } from "../utils/get-premium-user";
 
 export async function analyzeResumeController(
   req: AuthenticatedRequest,
@@ -22,11 +23,11 @@ export async function analyzeResumeController(
     }
 
     logger.info(`Iniciando análise de currículo para usuário ${req.user.id}`);
-    
+
     const textContent = await extractTextFromResume(req.file.path);
     logger.debug("Texto extraído do currículo", { length: textContent.length });
 
-    const analysisResult = await analyzeResumeWithIA(textContent);
+    const analysisResult = await analyzeResumeWithIA(textContent, req.user?.id);
     logger.debug("Resultado da análise", { 
       technical: analysisResult.technical,
       funnyComment: analysisResult.funny.comment 

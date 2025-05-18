@@ -64,7 +64,7 @@ model Subscription {
   start_date              DateTime
   end_date                DateTime?
   renewal_date            DateTime?
-  stripe_subscription_id  String
+  stripe_subscription_id  String?    
   created_at              DateTime  @default(now())
   user                    User      @relation(fields: [user_id], references: [id])
   plan                    Plan      @relation(fields: [plan_id], references: [id])
@@ -88,7 +88,7 @@ model Payment {
   status            String        
   payment_method    String
   qr_code           String?
-  transaction_id    String
+  transaction_id    String        @unique
   created_at        DateTime      @default(now())
   user              User          @relation(fields: [user_id], references: [id])
   subscription      Subscription  @relation(fields: [subscription_id], references: [id])

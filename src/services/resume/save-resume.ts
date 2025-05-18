@@ -3,6 +3,8 @@ import { AppError } from "../../errors/AppError";
 import prisma from "../../prisma/client";
 import { AnalysisResult } from "../../types/resume-types";
 import { calculateScore } from "../../utils/calculate-score";
+import { uploadResumeToCloudinary } from "../../utils/upload-cloudinary";
+import * as fs from 'fs/promises';
 
 export async function saveResumeAnalysis(
   userId: number,
@@ -13,10 +15,17 @@ export async function saveResumeAnalysis(
   try {
     logger.info(`Salvando análise de currículo para usuário ${userId}`);
 
+    const isProduction = process.env.NODE_ENV === 'prod';
+    logger.debug(`Ambiente de produção: ${isProduction}`);
+    const filePathToSave = isProduction
+      ? await uploadResumeToCloudinary(filePath) 
+      : filePath; 
+
+    logger.debug(`Caminho do currículo salvo: ${filePathToSave}`);
     const resume = await prisma.resume.create({
       data: {
         user_id: userId,
-        file_path: filePath,
+        file_path: filePathToSave,
         file_name: fileName,
         analysis_data: JSON.parse(JSON.stringify(analysisResult)) 
       }
@@ -43,6 +52,10 @@ export async function saveResumeAnalysis(
 
     logger.info(`Análise salva com sucesso. ID: ${analysis.id}`);
     
+    if (isProduction) {
+      await fs.unlink(filePath).catch(() => {});
+    }
+
     return {
       resumeId: resume.id,
       analysisId: analysis.id,

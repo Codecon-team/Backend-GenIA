@@ -1,11 +1,14 @@
-import { env } from "../../config/dotenv/env";
 import { logger } from "../../config/logger/logger";
 import { AppError } from "../../errors/AppError";
 import axios from 'axios';
 import prisma from "../../prisma/client";
 import { PaymentRequest, PaymentResponse } from "../../types/payment-types";
+import { env } from '../../config/dotenv/env';
+import { startPaymentVerification } from "./verify-payment";
 
 export async function createPremiumPayment(userId: number): Promise<PaymentResponse> {
+  logger.info(`Iniciando criação de pagamento premium para usuário ${userId}`);
+
   try {
     const user = await prisma.user.findUnique({
       where: { id: userId },
@@ -22,11 +25,25 @@ export async function createPremiumPayment(userId: number): Promise<PaymentRespo
       throw new AppError("Usuário não encontrado", 404);
     }
 
+    logger.debug(`Usuário encontrado`, {
+      userId: user.id,
+      email: user.email,
+      currentSubscriptions: user.subscriptions.map(s => ({
+        id: s.id,
+        plan: s.plan.name,
+        status: s.status
+      }))
+    });
+
     const hasActivePremium = user.subscriptions.some(
       sub => sub.plan.name === 'Prime' && sub.status === 'active'
     );
 
     if (hasActivePremium) {
+      logger.warn(`Tentativa de criar nova assinatura premium para usuário que já possui uma ativa`, {
+        userId,
+        existingSubscriptions: user.subscriptions
+      });
       throw new AppError("Usuário já possui assinatura premium ativa", 400);
     }
 
@@ -35,8 +52,15 @@ export async function createPremiumPayment(userId: number): Promise<PaymentRespo
     });
 
     if (!premiumPlan) {
+      logger.error("Plano premium não encontrado no banco de dados");
       throw new AppError("Plano premium não encontrado no sistema", 500);
     }
+
+    logger.debug(`Plano premium encontrado`, {
+      planId: premiumPlan.id,
+      planName: premiumPlan.name,
+      price: premiumPlan.price
+    });
 
     const subscription = await prisma.subscription.create({
       data: {
@@ -48,8 +72,14 @@ export async function createPremiumPayment(userId: number): Promise<PaymentRespo
       }
     });
 
+    logger.info(`Nova assinatura criada`, {
+      subscriptionId: subscription.id,
+      status: subscription.status,
+      planId: premiumPlan.id
+    });
+
     const paymentData: PaymentRequest = {
-      transaction_amount: premiumPlan.price,
+      transaction_amount: 1, // premiumPlan.price
       description: `Assinatura ${premiumPlan.name} - ${premiumPlan.billing_cycle}`,
       email: user.email,
       first_name: user.firstname || '',
@@ -58,19 +88,33 @@ export async function createPremiumPayment(userId: number): Promise<PaymentRespo
       userId: user.id
     };
 
+    logger.debug(`Enviando requisição de pagamento para API do Mercado Pago`, {
+      paymentData: {
+        ...paymentData,
+        cpf: paymentData.cpf ? '***masked***' : null 
+      }
+    });
+
     const response = await axios.post<PaymentResponse>(
       `${env.API_MS_PIX}/payments/`,
       paymentData,
       {
         headers: {
           'Content-Type': 'application/json',
-        }
+        },
+        timeout: 50000
       }
     );
 
     const mpResponse = response.data;
 
-    await prisma.payment.create({
+    logger.info(`Resposta recebida do Mercado Pago`, {
+      paymentId: mpResponse.id,
+      status: mpResponse.status,
+      statusDetail: mpResponse.status_detail
+    });
+
+    const dbPayment = await prisma.payment.create({
       data: {
         user_id: user.id,
         subscription_id: subscription.id,
@@ -84,12 +128,32 @@ export async function createPremiumPayment(userId: number): Promise<PaymentRespo
       }
     });
 
-    logger.info("Pagamento premium criado com sucesso", {
+    logger.debug(`Pagamento salvo no banco de dados`, {
+      dbPaymentId: dbPayment.id,
+      status: dbPayment.status
+    });
+
+    const updatedSubscription = await prisma.subscription.update({
+      where: { id: subscription.id },
+      data: { 
+        stripe_subscription_id: mpResponse.id.toString() 
+      }
+    });
+
+    logger.info(`Assinatura atualizada com ID do Mercado Pago`, {
+      subscriptionId: updatedSubscription.id,
+      stripeSubscriptionId: updatedSubscription.stripe_subscription_id
+    });
+
+    logger.info("Processo de criação de pagamento premium concluído com sucesso", {
       userId,
       paymentId: mpResponse.id,
       amount: premiumPlan.price,
-      status: mpResponse.status
+      status: mpResponse.status,
+      nextStep: "Iniciando verificação de status do pagamento"
     });
+
+    startPaymentVerification(mpResponse.id.toString(), userId, subscription.id);
 
     return {
       id: mpResponse.id,
@@ -105,9 +169,11 @@ export async function createPremiumPayment(userId: number): Promise<PaymentRespo
     };
 
   } catch (error) {
-    logger.error("Erro ao criar pagamento premium", {
+    logger.error("Falha no processo de criação de pagamento premium", {
       userId,
-      error: error instanceof Error ? error.message : error
+      error: error instanceof Error ? error.message : error,
+      stack: error instanceof Error ? error.stack : undefined,
+      time: new Date().toISOString()
     });
     
     if (error instanceof AppError) throw error;
