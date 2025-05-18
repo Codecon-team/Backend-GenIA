@@ -23,3 +23,45 @@ jobs:
               with:
                 node-version: "22"
 
+            
+            - name: login dockerhub
+              uses: docker/login-action@v3.4.0
+              with:
+                username: ${{secrets.DOCKERHUB_USER}}
+                password: ${{secrets.DOCKERHUB_PWD}}
+
+            - name: build da imagem docker
+              run: docker build -t blackvsk/genia:MS .
+
+            - name: push da imagem para o Docker Hub
+              run: docker push blackvsk/genia:MS
+
+    CD:
+      
+      needs: CI
+      runs-on: ubuntu-22.04
+
+      steps:
+      - name: Checkout do código
+        uses: actions/checkout@v4
+
+      - name: configurando credenciais da AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: sa-east-1
+
+      - name: Instalação do kubectl
+        run: |
+          curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+          chmod +x kubectl
+          sudo mv kubectl /usr/local/bin/
+
+      - name: atualizando kubeconfig
+        run: |
+          aws eks --region sa-east-1 update-kubeconfig --name GenIA-Cluster
+
+      - name: Deploy EKS
+        run: |
+          kubectl apply -f ./kubernetes/backend.yaml  
