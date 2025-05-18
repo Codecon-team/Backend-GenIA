@@ -1,3 +1,4 @@
+// src/services/resume/analyze-resume.ts
 import { generateText } from "ai";
 import { logger } from "../../config/logger/logger";
 import { AppError } from "../../errors/AppError";
@@ -5,14 +6,27 @@ import { extractJsonFromResponse } from "../../utils/json-from-response";
 import { AnalysisResult } from "../../types/resume-types";
 import { google } from "../../clients/ai/google-ai";
 import { validateTechnicalAnalysis } from "../../validators/valid-technial";
+import { calculateRoastLevel } from "../../utils/calculate-roast";
+import { checkUserPlan } from "../../utils/get-premium-user";
+import prisma from "../../prisma/client";
 
-export async function analyzeResumeWithIA(resumeText: string): Promise<AnalysisResult> {
+export async function analyzeResumeWithIA(resumeText: string, userId: number): Promise<AnalysisResult> {
   try {
     if (!resumeText || resumeText.trim().length < 50) {
       throw new AppError("Texto do currículo muito curto para análise", 400);
     }
 
+    const {isPremium} = await checkUserPlan(userId);
+    const resumeCount = await prisma.resume.count({
+      where: { user_id: userId },
+    });
+
+    if (!isPremium && resumeCount >= 1) {
+      throw new AppError("Plano gratuito só permite um currículo.", 403);
+    }
+    
     logger.debug("Iniciando análise de currículo com IA", {
+      userId,
       textLength: resumeText.length
     });
 
@@ -44,11 +58,13 @@ export async function analyzeResumeWithIA(resumeText: string): Promise<AnalysisR
     Destaque pontos engraçados ou incomuns.
     
     Currículo: ${resumeText.substring(0, 5000)}`;
-
+    const systemMessage = isPremium 
+    ? "Você é um analista sênior de RH. Faça um comentário profissional, construtivo e direto sobre o currículo, em tom formal e respeitoso." 
+    : "Você é um comediante stand-up analisando currículos. Seja debochado!"
     const funnyResponse = await generateText({
       model: google,
       prompt: funnyPrompt,
-      system: "Você é um comediante stand-up analisando currículos. Seja debochado!",
+      system: systemMessage,
       temperature: 0.9,
       maxTokens: 300
     });
@@ -62,6 +78,7 @@ export async function analyzeResumeWithIA(resumeText: string): Promise<AnalysisR
     const funnyComment = funnyResponse.text.trim();
 
     logger.debug("Análises concluídas", {
+      userId,
       technical: technicalAnalysis,
       funnyComment: funnyComment
     });
@@ -82,10 +99,4 @@ export async function analyzeResumeWithIA(resumeText: string): Promise<AnalysisR
     if (error instanceof AppError) throw error;
     throw new AppError("Erro durante a análise do currículo", 500);
   }
-}
-
-function calculateRoastLevel(comment: string): number {
-  const lengthScore = Math.min(Math.floor(comment.length / 50), 3);
-  const keywordScore = (comment.match(/!\?|rir|kkk|haha|engraçado/gi) || []).length;
-  return Math.min(lengthScore + keywordScore + 1, 5);
 }

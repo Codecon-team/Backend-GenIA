@@ -12,6 +12,7 @@ export interface LoginUser {
 }
 export interface AuthenticatedRequest extends Request {
   user?: { id: number };
+  isPremiumUser?: boolean;
 }
 export interface User {
   id: number;
