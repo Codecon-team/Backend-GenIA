@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { checkToken } from "../utils/checkToken";
+import { checkToken } from "../middlewares/checkToken";
 import { uploadResume } from "../config/multer/multer";
 import { analyzeResumeController, getOnlyResumeController, getResumeAnalysis } from "../controllers/resume-controller";
 

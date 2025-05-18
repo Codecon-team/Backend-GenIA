@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { checkToken } from "../utils/checkToken";
+import { checkToken } from "../middlewares/checkToken";
 import { createPaymentController } from "../controllers/payment-controller";
 
 const paymentRouter = Router()

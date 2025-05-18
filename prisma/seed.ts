@@ -41,7 +41,8 @@ async function main() {
           advancedAnalysis: true,
           pdfReports: true,
           prioritySupport: true,
-          unlimitedStorage: true
+          unlimitedStorage: true,
+          darkMode: true
         }),
         is_active: true
       }

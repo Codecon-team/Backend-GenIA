@@ -2,7 +2,7 @@ import { NextFunction, Request, Response } from "express";
 import { AppError } from "../errors/AppError";
 import { logger } from "../config/logger/logger";
 import { AuthenticatedRequest } from "../types/user-type";
-import { createPremiumPayment } from "../service/payment/create-payment";
+import { createPremiumPayment } from "../services/payment/create-payment";
 
 export const createPaymentController = async (
   req: AuthenticatedRequest,
